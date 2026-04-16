@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TCX Analyzer</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1115;
+      --panel: #171a21;
+      --panel-2: #1f2430;
+      --text: #e8ecf1;
+      --muted: #aab4c0;
+      --accent: #6ea8fe;
+      --border: #2c3442;
+      --good: #7bd88f;
+    }
+
+@@
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .full-span {
+      width: 100%;
+    }
+
+    .control-card {
+      min-width: 0;
+      width: 100%;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .control-card input {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .top-controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    input[type="file"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 15px;
+    }
+    input[type="file"] {
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--accent);
+      color: #08111f;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: var(--panel-2);
+      color: var(--text);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 580px;
+      resize: vertical;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #0b0d12;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(123, 216, 143, 0.12);
+      color: var(--good);
+      font-size: 12px;
+      border: 1px solid rgba(123, 216, 143, 0.24);
+      margin-bottom: 10px;
+    }
+
+    .intent-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 0;
+      align-items: stretch;
+    }
+
+    .intent-row button {
+      width: 100%;
+      min-height: 44px;
+    }
+
+    @media (max-width: 760px) {
+      .intent-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    button.active {
+      background: var(--accent);
+      color: #08111f;
+      font-weight: 700;
+      border-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>TCX Analyzer</h1>
+    <div class="sub">Choose a Garmin .tcx file, enter LTHR and session intent, generate a text report, then copy and paste it into ChatGPT.</div>
+
+    <div class="panel">
+      <div class="grid">
+        <div class="top-controls">
+          <div class="control-card">
+            <label for="tcxFile">TCX file</label>
+            <input id="tcxFile" type="file" accept=".tcx,application/xml,text/xml" />
+          </div>
+          <div class="control-card">
+            <label for="lthr">LTHR</label>
+            <input id="lthr" type="number" min="100" max="240" step="1" value="177" />
+          </div>
+        </div>
+        <div class="control-card full-span">
+          <label>Session intent</label>
+          <div id="intentButtons" class="intent-row">
+            <button type="button" id="intentSteady" class="secondary">Steady run</button>
+            <button type="button" id="intentIntervals" class="secondary">Intervals / structured workout</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button id="generateBtn">Generate report</button>
+        <button id="copyBtn" class="secondary" type="button">Copy report</button>
+        <button id="clearBtn" class="secondary" type="button">Clear</button>
+      </div>
+
+      <div id="status" class="status">Ready.</div>
+      <div class="hint">This runs entirely in the browser. It produces a copy-ready report with pacing, heart-rate, durability, efficiency, and recommendation signals derived from the TCX file.</div>
+      <div class="hint">Jack Daniels intent guide: E = easy or recovery running, done comfortably. Long run = mostly easy aerobic running with longer duration. M = marathon-pace or steady running, comfortably hard and controlled. T = threshold running, around one-hour race effort. I = interval work aimed at VO2max with hard repeat bouts. R = repetition work for fast relaxed speed with full recovery.</div>
+    </div>
+
+    <div class="panel">
+      <div class="pill">Copy everything below into ChatGPT</div>
+      <textarea id="reportOutput" spellcheck="false" placeholder="Your generated workout report will appear here."></textarea>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('tcxFile');
+    const lthrInput = document.getElementById('lthr');
+    let sessionIntentValue = 'steady';
+    const intentSteadyBtn = document.getElementById('intentSteady');
+    const intentIntervalsBtn = document.getElementById('intentIntervals');
+    function setIntent(val) {
+      sessionIntentValue = val;
+      intentSteadyBtn.classList.toggle('active', val === 'steady');
+      intentIntervalsBtn.classList.toggle('active', val === 'intervals');
+    }
+
+    intentSteadyBtn.addEventListener('click', () => setIntent('steady'));
+    intentIntervalsBtn.addEventListener('click', () => setIntent('intervals'));
+
+    // default selection
+    setIntent('steady');
+    const generateBtn = document.getElementById('generateBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const output = document.getElementById('reportOutput');
+    const statusEl = document.getElementById('status');
+    const RUN_WALK_THRESHOLD_MPS = 1.2;
+    const STEADY_RUN_START_MIN = 10;
+    const MIN_RUN_WALK_SEGMENT_S = 20;
+    const DECOUPLING_GATE_PCT = 5.0;
+
+    generateBtn.addEventListener('click', async () => {
+      try {
+        const file = fileInput.files?.[0];
+        if (!file) {
+          setStatus('Choose a .tcx file first.');
+          return;
+        }
+
+        const lthr = Number(lthrInput.value);
+        if (!Number.isFinite(lthr) || lthr < 100 || lthr > 240) {
+          setStatus('Enter a reasonable LTHR.');
+          return;
+        }
+
+        setStatus('Parsing TCX and building report...');
+        const text = await file.text();
+        const report = buildReport(text, file.name, sessionIntentValue, lthr);
+        output.value = report;
+        output.focus();
+        output.setSelectionRange(0, output.value.length);
+        setStatus('Report generated. Copy and paste it into ChatGPT.');
+      } catch (err) {
+        console.error(err);
+        setStatus(`Error: ${err.message || err}`);
+      }
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        if (!output.value.trim()) {
+          setStatus('Nothing to copy yet.');
+          return;
+        }
+        await navigator.clipboard.writeText(output.value);
+        setStatus('Report copied to clipboard.');
+      } catch (err) {
+        output.focus();
+        output.select();
+        setStatus('Clipboard copy failed. The text is selected so you can copy manually.');
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      output.value = '';
+      statusEl.textContent = 'Ready.';
+    });
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function formatDuration(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) return 'N/A';
+      const s = Math.round(seconds);
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (h > 0) {
+        return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      }
+      return `${m}:${String(sec).padStart(2,'0')}`;
+    }
+
+    function formatPaceFromTimeDistance(totalTimeS, totalDistanceM, unit) {
+      if (!isNum(totalTimeS) || !isNum(totalDistanceM) || totalDistanceM <= 0) return 'N/A';
+      const metersPerUnit = unit === 'mile' ? 1609.344 : 1000;
+      const units = totalDistanceM / metersPerUnit;
+      if (!isNum(units) || units <= 0) return 'N/A';
+      return formatDuration(totalTimeS / units);
+    }
+
+    function formatPaceFromMps(speedMps, unit) {
+      if (!isNum(speedMps) || speedMps <= 0) return 'N/A';
+      const secPerMeter = 1 / speedMps;
+      const sec = unit === 'mile' ? secPerMeter * 1609.344 : secPerMeter * 1000;
+      return formatDuration(sec);
+    }
+
+    function paceKmToMile(secPerKm) {
+      return isNum(secPerKm) ? secPerKm * 1.609344 : null;
+    }
+
+    function buildReport(xmlText, fileName, sessionIntent = 'auto', lactateThresholdHr = 177) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlText, 'application/xml');
+      const parserError = xml.querySelector('parsererror');
+      if (parserError) {
+        throw new Error('Invalid TCX/XML file.');
+      }
+
+      const activity = xml.querySelector('Activity');
+      const sport = activity?.getAttribute('Sport') || 'N/A';
+      const activityId = getText(activity, 'Id') || 'N/A';
+      const laps = parseLaps(xml);
+      const points = parseTrackpoints(xml);
+
+      if (points.length < 2) {
+        throw new Error('Not enough trackpoint data found.');
+      }
+
+      points.sort((a, b) => a.timeMs - b.timeMs);
+
+      const totalDistanceM = computeTotalDistance(points, laps);
+      const totalTimeS = computeTotalTime(points, laps);
+      const movingTimeS = computeMovingTime(points, 0.8);
+      const idleTimeS = totalTimeS != null && movingTimeS != null ? Math.max(0, totalTimeS - movingTimeS) : null;
+      const avgHr = weightedAverageHr(points);
+      const maxHrVal = Math.max(...points.map(p => p.hrBpm).filter(isNum));
+      const altitude = altitudeStats(points);
+      const zones = heartRateZones(points, lactateThresholdHr);
+      const kmSplits = makeDistanceSplits(points, 1000.0);
+      const mileSplits = makeDistanceSplits(points, 1609.344);
+      const samples = sampleTimeSeries(points, 60);
+      const halfStats = computeFirstSecondHalfStats(points);
+      const bestEfforts = computeBestSegmentEfforts(points, [400.0, 1000.0, 1609.344]);
+      // const splitClassification = classifyPacingSplit(halfStats);
+
+      const steadyPoints = (sessionIntent === 'steady' && laps.length > 0)
+        ? points.filter(p => p.timeMs >= laps[0].startTime?.getTime() && p.timeMs <= (laps[0].startTime?.getTime() + (isNum(laps[0].totalTimeS) ? laps[0].totalTimeS * 1000 : 0)))
+        : points;
+
+      const steadyRunAnalysis = sessionIntent === 'steady' ? computeSteadyRunAnalysis(steadyPoints, computeTotalDistance(steadyPoints, [])) : { hasSteadyData: false };
+      const earlyRunAggression = sessionIntent === 'steady' ? computeEarlyRunAggression(steadyPoints, computeTotalTime(steadyPoints, []), computeTotalDistance(steadyPoints, []), lactateThresholdHr) : { hasData: false };
+      const durabilityScore = sessionIntent === 'steady' ? computeDurabilityScore(steadyRunAnalysis, computeFirstSecondHalfStats(steadyPoints)) : { score: 0, label: 'N/A', decouplingFactor: 'N/A', lateFadeFactor: 'N/A', note: 'Only computed for steady runs using lap 1.' };
+      const aerobicCeiling = sessionIntent === 'steady' ? computeAerobicCeiling(steadyPoints) : { hasData: false };
+      const cardiacEfficiencyTrend = sessionIntent === 'steady' ? computeCardiacEfficiencyTrend(steadyPoints) : { hasData: false };
+      const paceVariability = sessionIntent === 'steady' ? computePaceVariabilityIndex(steadyPoints) : { hasData: false };
+      const hrStability = sessionIntent === 'steady' ? computeHrStabilityIndex(steadyPoints) : { hasData: false };
+      const hrPaceCoupling = sessionIntent === 'steady' ? computeHrPaceCoupling(steadyPoints) : { hasData: false };
+      const efficiencyAtFixedHr = sessionIntent === 'steady' ? computeEfficiencyAtFixedHr(steadyPoints, lactateThresholdHr) : { hasData: false };
+      const structuredWorkout = computeStructuredWorkoutAnalysis(laps, sessionIntent);
+
+      const cleanAerobicMinutes = sessionIntent === 'steady' ? computeCleanAerobicMinutes(steadyPoints, lactateThresholdHr, steadyRunAnalysis) : { hasData: false };
+
+      const lines = [];
+      lines.push('GARMIN TCX WORKOUT REPORT');
+      lines.push('============================================================');
+      lines.push('');
+      lines.push('FILE');
+      lines.push('------------------------------------------------------------');
+      lines.push(`Source file: ${fileName}`);
+      lines.push(`Sport: ${sport}`);
+      lines.push(`Activity ID: ${activityId}`);
+      lines.push(`Trackpoints: ${points.length}`);
+      lines.push(`Laps: ${laps.length}`);
+      lines.push('');
+
+      lines.push('SUMMARY');
+      lines.push('------------------------------------------------------------');
+      lines.push(`Start time: ${isoOrNA(points[0]?.time)}`);
+      lines.push(`End time:   ${isoOrNA(points[points.length - 1]?.time)}`);
+      lines.push(`Total time:        ${formatDuration(totalTimeS)}`);
+      lines.push(`Moving time:       ${formatDuration(movingTimeS)}`);
+      lines.push(`Idle/stopped time: ${formatDuration(idleTimeS)}`);
+      lines.push(totalDistanceM != null ? `Total distance:    ${fmt(mToKm(totalDistanceM), 3)} km / ${fmt(mToMiles(totalDistanceM), 3)} mi` : 'Total distance:    N/A');
+      lines.push(`Average pace:      ${formatPaceFromTimeDistance(totalTimeS, totalDistanceM, 'km')} per km`);
+      lines.push(`Average pace:      ${formatPaceFromTimeDistance(totalTimeS, totalDistanceM, 'mile')} per mile`);
+      lines.push(`Moving pace:       ${formatPaceFromTimeDistance(movingTimeS, totalDistanceM, 'km')} per km`);
+      lines.push(`Moving pace:       ${formatPaceFromTimeDistance(movingTimeS, totalDistanceM, 'mile')} per mile`);
+      lines.push(avgHr != null ? `Average HR:        ${avgHr.toFixed(1)} bpm` : 'Average HR:        N/A');
+      lines.push(isNum(maxHrVal) ? `Max HR:            ${maxHrVal.toFixed(0)} bpm` : 'Max HR:            N/A');
+      lines.push(altitude.min != null && altitude.max != null ? `Altitude min/max:  ${altitude.min.toFixed(1)} / ${altitude.max.toFixed(1)} m` : 'Altitude min/max:  N/A');
+      lines.push(altitude.range != null ? `Altitude range:    ${altitude.range.toFixed(1)} m` : 'Altitude range:    N/A');
+      lines.push(halfStats.firstHalfTimeS != null ? `First half:        ${formatDuration(halfStats.firstHalfTimeS)}` : 'First half:        N/A');
+      lines.push(halfStats.secondHalfTimeS != null ? `Second half:       ${formatDuration(halfStats.secondHalfTimeS)}` : 'Second half:       N/A');
+      lines.push(halfStats.firstHalfAvgHr != null && halfStats.secondHalfAvgHr != null ? `Half HRs:          ${halfStats.firstHalfAvgHr.toFixed(1)} -> ${halfStats.secondHalfAvgHr.toFixed(1)} bpm` : 'Half HRs:          N/A');
+      lines.push(halfStats.hrDriftPct != null ? `HR drift:          ${signed(halfStats.hrDriftPct)}%` : 'HR drift:          N/A');
+      lines.push(halfStats.paceChangePct != null ? `Pace change:       ${signed(halfStats.paceChangePct)}%` : 'Pace change:       N/A');
+      // Split classification lines removed
+      lines.push('');
+
+      if (sessionIntent === 'steady') {
+        lines.push('HEART RATE STABILITY INDEX');
+        lines.push('------------------------------------------------------------');
+        lines.push('Scope: Steady-run mode only. Analysis uses lap 1 only.');
+        if (!hrStability.hasData) {
+          lines.push('Could not compute a reliable heart rate stability index from this run.');
+        } else {
+          lines.push(`Analyzed steady time:     ${formatDuration(hrStability.totalSteadyTimeS)}`);
+          lines.push(`Average steady HR:        ${hrStability.avgHr.toFixed(1)} bpm`);
+          lines.push(`HR standard deviation:    ${hrStability.stdDevHr.toFixed(1)} bpm`);
+          lines.push(`Stability coefficient:    ${hrStability.cvPct.toFixed(1)}%`);
+          lines.push(`Stability label:          ${hrStability.label}`);
+          lines.push(`Stability note:           ${hrStability.note}`);
+        }
+        lines.push('');
+      }
+
+      if (sessionIntent === 'steady') {
+        lines.push('DURABILITY SCORE');
+        lines.push('------------------------------------------------------------');
+        lines.push('Scope: Steady-run mode only. Analysis uses lap 1 only.');
+        lines.push(`Durability score:         ${durabilityScore.score.toFixed(1)} / 10`);
+        lines.push(`Durability label:         ${durabilityScore.label}`);
+        lines.push(`Decoupling factor:        ${durabilityScore.decouplingFactor}`);
+        lines.push(`Late-fade factor:         ${durabilityScore.lateFadeFactor}`);
+        lines.push(`Durability note:          ${durabilityScore.note}`);
+        lines.push('');
+      }
+
+      lines.push('BEST EFFORTS');
+      lines.push('------------------------------------------------------------');
+      if (!bestEfforts.length) {
+        lines.push('No best-effort segments available.');
+      } else {
+        lines.push(`${padRight('Segment', 10)} | ${padRight('Best time', 10)} | ${padRight('Pace/km', 10)} | ${padRight('Pace/mile', 12)} | Start`);
+        bestEfforts.forEach(effort => {
+          const label = effort.distanceM === 400 ? '400 m' : effort.distanceM === 1000 ? '1 km' : Math.abs(effort.distanceM - 1609.344) < 1e-6 ? '1 mile' : `${effort.distanceM.toFixed(0)} m`;
+          if (effort.bestTimeS == null) {
+            lines.push(`${padRight(label, 10)} | ${padRight('N/A', 10)} | ${padRight('N/A', 10)} | ${padRight('N/A', 12)} | N/A`);
+          } else {
+            const paceKm = formatDuration(effort.bestTimeS / (effort.distanceM / 1000));
+            const paceMile = formatDuration(effort.bestTimeS / (effort.distanceM / 1609.344));
+            lines.push(`${padRight(label, 10)} | ${padRight(formatDuration(effort.bestTimeS), 10)} | ${padRight(paceKm + '/km', 10)} | ${padRight(paceMile + '/mile', 12)} | ${isoOrNA(effort.bestStartTime)}`);
+          }
+        });
+      }
+      lines.push('');
+
+
+      lines.push('LAP SUMMARY');
+      lines.push('------------------------------------------------------------');
+      if (!laps.length) {
+        lines.push('No lap data found.');
+      } else {
+        lines.push(`${padRight('Lap', 6)} | ${padRight('Time', 8)} | ${padRight('Dist(mi)', 9)} | ${padRight('Pace', 12)} | ${padRight('AvgHR', 7)} | ${padRight('MaxHR', 7)} | Start`);
+        laps.forEach((lap, idx) => {
+          lines.push(
+            `${padRight('Lap ' + String(idx + 1).padStart(2, '0'), 6)} | ` +
+            `${padRight(formatDuration(lap.totalTimeS), 8)} | ` +
+            `${padRight(lap.distanceM != null ? fmt(mToMiles(lap.distanceM), 3) : 'N/A', 9)} | ` +
+            `${padRight(formatPaceFromTimeDistance(lap.totalTimeS, lap.distanceM, 'mile') + ' /mile', 12)} | ` +
+            `${padRight(String(lap.avgHr ?? 'N/A'), 7)} | ` +
+            `${padRight(String(lap.maxHr ?? 'N/A'), 7)} | ` +
+            `${isoOrNA(lap.startTime)}`
+          );
+        });
+      }
+      lines.push('');
+
+      lines.push('HEART RATE ZONES');
+      lines.push('------------------------------------------------------------');
+      lines.push(`LTHR used: ${lactateThresholdHr} bpm`);
+      lines.push(`Z1: < ${Math.round(lactateThresholdHr * 0.80)} bpm`);
+      lines.push(`Z2: ${Math.round(lactateThresholdHr * 0.80)}-${Math.round(lactateThresholdHr * 0.89) - 1} bpm`);
+      lines.push(`Z3: ${Math.round(lactateThresholdHr * 0.89)}-${Math.round(lactateThresholdHr * 0.95) - 1} bpm`);
+      lines.push(`Z4: ${Math.round(lactateThresholdHr * 0.95)}-${Math.round(lactateThresholdHr * 1.00)} bpm`);
+      lines.push(`Z5: > ${Math.round(lactateThresholdHr * 1.00)} bpm`);
+      lines.push('');
+      const totalZoneTime = Object.values(zones).reduce((a, b) => a + b, 0);
+      lines.push(`${padRight('Zone', 20)} | ${padRight('Time', 8)} |   Pct`);
+      for (const [zoneName, sec] of Object.entries(zones)) {
+        const pct = totalZoneTime > 0 ? (sec / totalZoneTime) * 100 : 0;
+        lines.push(`${padRight(zoneName, 20)} | ${padLeft(formatDuration(sec), 8)} | ${pct.toFixed(1).padStart(5, ' ')}%`);
+      }
+      lines.push('');
+
+      lines.push('PER-KILOMETER SPLITS');
+      lines.push('------------------------------------------------------------');
+      if (!kmSplits.length) {
+        lines.push('No kilometer splits available.');
+      } else {
+        lines.push(`${padRight('KM', 6)} | ${padRight('Split', 8)} | ${padRight('Cumulative', 10)} | Pace`);
+        kmSplits.forEach(s => {
+          lines.push(`${padRight('KM ' + String(s.splitIndex).padStart(2, '0'), 6)} | ${padRight(formatDuration(s.splitTimeS), 8)} | ${padRight(formatDuration(s.cumulativeTimeS), 10)} | ${s.pacePerKm}/km`);
+        });
+      }
+      lines.push('');
+
+      lines.push('PER-MILE SPLITS');
+      lines.push('------------------------------------------------------------');
+      if (!mileSplits.length) {
+        lines.push('No mile splits available.');
+      } else {
+        lines.push(`${padRight('Mile', 8)} | ${padRight('Split', 8)} | ${padRight('Cumulative', 10)} | Pace`);
+        mileSplits.forEach(s => {
+          lines.push(`${padRight('Mile ' + String(s.splitIndex).padStart(2, '0'), 8)} | ${padRight(formatDuration(s.splitTimeS), 8)} | ${padRight(formatDuration(s.cumulativeTimeS), 10)} | ${s.pacePerMile}/mile`);
+        });
+      }
+      lines.push('');
+
+
+      if (sessionIntent === 'steady') {
+        lines.push('STEADY RUN ANALYSIS');
+        lines.push('------------------------------------------------------------');
+        lines.push('Scope: Steady-run mode only. Analysis uses lap 1 only.');
+        lines.push('Definition: Continuous running after minute 10 with no walking. Used to assess aerobic durability and decoupling.');
+        if (!steadyRunAnalysis.hasSteadyData) {
+          lines.push('Not enough steady running data for filtered decoupling analysis.');
+        } else {
+          lines.push(`Steady run time:           ${formatDuration(steadyRunAnalysis.steadyTimeS)}`);
+          lines.push(`Steady run distance:       ${fmt(mToKm(steadyRunAnalysis.steadyDistanceM), 3)} km / ${fmt(mToMiles(steadyRunAnalysis.steadyDistanceM), 3)} mi`);
+          lines.push(`Steady avg pace:           ${formatPaceFromTimeDistance(steadyRunAnalysis.steadyTimeS, steadyRunAnalysis.steadyDistanceM, 'mile')} /mile`);
+          lines.push(`Steady avg HR:             ${steadyRunAnalysis.steadyAvgHr != null ? steadyRunAnalysis.steadyAvgHr.toFixed(1) + ' bpm' : 'N/A'}`);
+          lines.push(`Decoupling after minute 10: ${steadyRunAnalysis.decouplingPct != null ? signed(steadyRunAnalysis.decouplingPct) + '%' : 'N/A'}`);
+          lines.push('Decoupling definition: Change in HR relative to speed over time. Low (0–3%) = strong control. Moderate (3–5%) = fatigue. High (>5%) = breakdown.');
+        }
+        lines.push('');
+        lines.push('CLEAN AEROBIC MINUTES');
+        lines.push('------------------------------------------------------------');
+        lines.push('Scope: Steady-run mode only. Analysis uses lap 1 only.');
+        lines.push('Definition: Time spent running continuously below the aerobic HR cap and before fatigue breakdown. Represents truly sustainable aerobic work.');
+        if (!cleanAerobicMinutes.hasData) {
+          lines.push('Could not compute clean aerobic minutes from this run.');
+        } else {
+          lines.push(`Clean aerobic time:       ${formatDuration(cleanAerobicMinutes.cleanTimeS)}`);
+          lines.push(`Clean aerobic distance:   ${fmt(mToKm(cleanAerobicMinutes.cleanDistanceM), 3)} km / ${fmt(mToMiles(cleanAerobicMinutes.cleanDistanceM), 3)} mi`);
+          lines.push(`Longest clean streak:     ${formatDuration(cleanAerobicMinutes.longestStreakS)}`);
+          lines.push(`HR cap used:              ${cleanAerobicMinutes.hrCap.toFixed(0)} bpm`);
+          lines.push(`Decoupling gate used:     ${cleanAerobicMinutes.decouplingGatePct.toFixed(1)}%`);
+          lines.push(`Clean pace:               ${formatPaceFromTimeDistance(cleanAerobicMinutes.cleanTimeS, cleanAerobicMinutes.cleanDistanceM, 'mile')} /mile`);
+          lines.push(`Clean minutes note:       ${cleanAerobicMinutes.note}`);
+        }
+        lines.push('');
+        lines.push('AEROBIC CEILING ESTIMATE');
+        lines.push('------------------------------------------------------------');
+        lines.push('Scope: Steady-run mode only. Analysis uses lap 1 only.');
+        lines.push('Definition: Highest HR you sustained while keeping decoupling ≤ ~5%. Approximates your current aerobic limit.');
+        if (!aerobicCeiling.hasData) {
+          lines.push('Could not estimate aerobic ceiling from this run.');
+        } else {
+          lines.push(`Estimated ceiling HR:     ${aerobicCeiling.ceilingHr.toFixed(1)} bpm`);
+          lines.push(`Supporting steady time:   ${formatDuration(aerobicCeiling.supportingTimeS)}`);
+          lines.push(`Supporting steady dist:   ${fmt(mToKm(aerobicCeiling.supportingDistanceM), 3)} km / ${fmt(mToMiles(aerobicCeiling.supportingDistanceM), 3)} mi`);
+          lines.push(`Supporting decoupling:    ${signed(aerobicCeiling.decouplingPct)}%`);
+          lines.push(`Estimate basis:           ${aerobicCeiling.basis}`);
+        }
+        lines.push('');
+
+        lines.push('AEROBIC EFFICIENCY AND COUPLING');
+        lines.push('------------------------------------------------------------');
+        lines.push('Scope: Steady-run mode only. Analysis uses lap 1 only.');
+        lines.push('Definition: Combines HR-to-speed drift over time with HR-pace coupling. Lower drift and stronger coupling indicate better aerobic control.');
+        if (!cardiacEfficiencyTrend.hasData) {
+          lines.push('Could not compute a reliable cardiac efficiency trend from this run.');
+        } else {
+          lines.push(`Steady segment time:      ${formatDuration(cardiacEfficiencyTrend.totalSteadyTimeS)}`);
+          lines.push(`First-half efficiency:    ${cardiacEfficiencyTrend.firstHalfRatio.toFixed(2)} HR/speed`);
+          lines.push(`Second-half efficiency:   ${cardiacEfficiencyTrend.secondHalfRatio.toFixed(2)} HR/speed`);
+          lines.push(`Efficiency change:        ${signed(cardiacEfficiencyTrend.efficiencyChangePct)}%`);
+          lines.push(`Trend classification:     ${cardiacEfficiencyTrend.label}`);
+          lines.push(`Trend note:               ${cardiacEfficiencyTrend.note}`);
+          if (hrPaceCoupling.hasData) {
+            lines.push(`HR-pace coupling:         ${hrPaceCoupling.correlation.toFixed(2)}`);
+            lines.push(`Coupling label:           ${hrPaceCoupling.label}`);
+            lines.push(`Coupling note:            ${hrPaceCoupling.note}`);
+          }
+        }
+        lines.push('');
+      }
+
+      // EFFICIENCY AT FIXED HR section
+      if (sessionIntent === 'steady') {
+        lines.push('EFFICIENCY AT FIXED HR');
+        lines.push('------------------------------------------------------------');
+        lines.push('Scope: Steady-run mode only. Analysis uses lap 1 only.');
+        lines.push('Definition: Average pace while heart rate stayed inside a narrow target band. Useful for tracking true aerobic performance over time.');
+        if (!efficiencyAtFixedHr.hasData) {
+          lines.push('Could not compute efficiency at fixed HR from this run.');
+        } else {
+          lines.push(`Target HR band:           ${efficiencyAtFixedHr.lowerHr}-${efficiencyAtFixedHr.upperHr} bpm`);
+          lines.push(`Pace @ ${efficiencyAtFixedHr.targetHr} bpm:        ${efficiencyAtFixedHr.pacePerMile} /mile`);
+          lines.push(`Average HR in band:       ${efficiencyAtFixedHr.avgHr.toFixed(1)} bpm`);
+          lines.push(`Samples used:             ${formatDuration(efficiencyAtFixedHr.timeS)}`);
+          lines.push(`Distance in band:         ${fmt(mToMiles(efficiencyAtFixedHr.distanceM), 3)} mi`);
+          lines.push(`Note:                     ${efficiencyAtFixedHr.note}`);
+        }
+        lines.push('');
+
+        lines.push('PACE VARIABILITY INDEX');
+        lines.push('------------------------------------------------------------');
+        lines.push('Scope: Steady-run mode only. Analysis uses lap 1 only.');
+        if (!paceVariability.hasData) {
+          lines.push('Could not compute a reliable pace variability index from this run.');
+        } else {
+          lines.push(`Analyzed running time:     ${formatDuration(paceVariability.totalRunTimeS)}`);
+          lines.push(`Average run pace:          ${formatDuration(paceKmToMile(paceVariability.avgPaceSecPerKm))} /mile`);
+          lines.push(`Pace standard deviation:   ${formatDuration(paceKmToMile(paceVariability.stdDevSecPerKm))} /mile`);
+          lines.push(`Variability coefficient:   ${paceVariability.cvPct.toFixed(1)}%`);
+          lines.push(`Variability label:         ${paceVariability.label}`);
+          lines.push(`Variability note:          ${paceVariability.note}`);
+        }
+        lines.push('');
+
+        lines.push('EARLY-RUN AGGRESSION SCORE');
+        lines.push('------------------------------------------------------------');
+        lines.push('Scope: Steady-run mode only. Analysis uses lap 1 only.');
+        lines.push('Definition: Effort from minutes 2–5 relative to full-run pace and LTHR. Ignores startup HR to isolate pacing decisions.');
+        if (!earlyRunAggression.hasData) {
+          lines.push('Not enough early-run data to compute aggression score.');
+        } else {
+          lines.push(`Minutes ignored at start: ${earlyRunAggression.ignoredStartMin.toFixed(1)} min`);
+          lines.push(`2-5 min pace:            ${formatDuration(paceKmToMile(earlyRunAggression.windowPaceSecPerKm))} /mile`);
+          lines.push(`Full-run average pace:    ${formatDuration(paceKmToMile(earlyRunAggression.fullRunPaceSecPerKm))} /mile`);
+          lines.push(`2-5 min vs average:       ${signed(earlyRunAggression.windowVsAveragePct)}%`);
+          lines.push(`HR at 2 min:              ${earlyRunAggression.hrAt2Min != null ? earlyRunAggression.hrAt2Min.toFixed(0) + ' bpm' : 'N/A'}`);
+          lines.push(`HR at 5 min:              ${earlyRunAggression.hrAt5Min != null ? earlyRunAggression.hrAt5Min.toFixed(0) + ' bpm' : 'N/A'}`);
+          lines.push(`HR at 10 min:             ${earlyRunAggression.hrAt10Min != null ? earlyRunAggression.hrAt10Min.toFixed(0) + ' bpm' : 'N/A'}`);
+          lines.push(`LTHR effort at 5 min:     ${earlyRunAggression.lthrFrac5Min != null ? (earlyRunAggression.lthrFrac5Min * 100).toFixed(1) + '%' : 'N/A'}`);
+          lines.push(`LTHR effort at 10 min:    ${earlyRunAggression.lthrFrac10Min != null ? (earlyRunAggression.lthrFrac10Min * 100).toFixed(1) + '%' : 'N/A'}`);
+          lines.push(`HR rise 2-5 min:          ${earlyRunAggression.hrRise2to5 != null ? signed(earlyRunAggression.hrRise2to5) + ' bpm' : 'N/A'}`);
+          lines.push(`HR rise 2-10 min:         ${earlyRunAggression.hrRise2to10 != null ? signed(earlyRunAggression.hrRise2to10) + ' bpm' : 'N/A'}`);
+          lines.push(`Aggression score:         ${earlyRunAggression.scoreLabel}`);
+          lines.push(`Aggression note:          ${earlyRunAggression.note}`);
+        }
+        lines.push('');
+      }
+
+
+
+      if (sessionIntent === 'intervals') {
+        lines.push('STRUCTURED WORKOUT ANALYSIS');
+        lines.push('------------------------------------------------------------');
+        lines.push('Definition: For T, I, and R sessions, lap 1 = warm-up, lap 2 = stretch/prep, last lap = walk, penultimate lap = cooldown, and the lap before that = walk/rest/stretch. Work reps are the laps between prep and pre-cooldown rest.');
+        lines.push(`Session intent:           ${structuredWorkout.intentLabel}`);
+        lines.push(`Warm-up lap:              ${structuredWorkout.warmup.summary}`);
+        lines.push(`Prep lap:                 ${structuredWorkout.prep.summary}`);
+        lines.push(`Work reps:                ${structuredWorkout.workRepCount}`);
+        lines.push(`Recovery reps:            ${structuredWorkout.recoveryRepCount}`);
+        lines.push(`Recovery/rest before CD:  ${structuredWorkout.preCooldownRest.summary}`);
+        lines.push(`Cool-down lap:            ${structuredWorkout.cooldown.summary}`);
+        lines.push(`Final walk lap:           ${structuredWorkout.finalWalk.summary}`);
+        if (!structuredWorkout.hasData) {
+          lines.push(`Structured analysis note: ${structuredWorkout.note || 'Could not compute structured workout analysis from the available lap data.'}`);
+        } else if (structuredWorkout.workRepCount > 0) {
+          lines.push(`Average work pace:        ${structuredWorkout.avgWorkPace}`);
+          lines.push(`Average work HR:          ${structuredWorkout.avgWorkHr}`);
+          lines.push(`Fastest work rep:         ${structuredWorkout.fastestRepSummary}`);
+          lines.push(`Slowest work rep:         ${structuredWorkout.slowestRepSummary}`);
+          lines.push(`Rep pace variability:     ${structuredWorkout.repPaceVariabilityPct}`);
+          lines.push(`Consistency label:        ${structuredWorkout.consistencyLabel}`);
+          lines.push(`Work reps note:           ${structuredWorkout.note}`);
+          structuredWorkout.workRepSummaries.forEach(line => lines.push(line));
+        } else {
+          lines.push('No work reps detected between prep and the pre-cooldown rest lap.');
+        }
+        lines.push('');
+      }
+
+
+
+      lines.push('RAW TIME-SERIES SAMPLES (1-MINUTE)');
+      lines.push('------------------------------------------------------------');
+      if (!samples.length) {
+        lines.push('No time-series samples available.');
+      } else {
+        lines.push(`${padRight('Time', 24)} | ${padRight('Dist_km', 7)} | ${padRight('HR', 5)} | Alt_m`);
+        samples.forEach(p => {
+          lines.push(
+            `${padRight(isoOrNA(p.time), 24)} | ` +
+            `${padRight(p.distanceM != null ? fmt(mToKm(p.distanceM), 3) : 'N/A', 7)} | ` +
+            `${padRight(String(p.hrBpm ?? 'N/A'), 5)} | ` +
+            `${p.altitudeM != null ? p.altitudeM.toFixed(1) : 'N/A'}`
+          );
+        });
+      }
+      lines.push('');
+
+      return lines.join('\n');
+    }
+
+    function getText(root, tagName) {
+      return root?.getElementsByTagName(tagName)?.[0]?.textContent?.trim() || null;
+    }
+
+    function getDirectText(root, tagName) {
+      const nodes = Array.from(root?.children || []).filter(el => el.localName === tagName || el.tagName === tagName);
+      return nodes[0]?.textContent?.trim() || null;
+    }
+
+    function queryText(root, selector) {
+      const parts = selector.split('>').map(s => s.trim());
+      let node = root;
+      for (const part of parts) {
+        if (!node) return null;
+        node = Array.from(node.children || []).find(el => el.localName === part || el.tagName === part) || null;
+      }
+      return node?.textContent?.trim() || null;
+    }
+
+    function parseDate(value) {
+      if (!value) return null;
+      const d = new Date(value);
+      return Number.isFinite(d.getTime()) ? d : null;
+    }
+
+    function parseNumber(value) {
+      if (value == null || value === '') return null;
+      const n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function parseIntSafe(value) {
+      if (value == null || value === '') return null;
+      const n = Number(value);
+      return Number.isFinite(n) ? Math.round(n) : null;
+    }
+
+    function isNum(v) {
+      return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function mean(arr) {
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    function clamp(n, min, max) {
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function signed(n) {
+      return `${n >= 0 ? '+' : ''}${n.toFixed(1)}`;
+    }
+
+    function fmt(n, digits) {
+      return isNum(n) ? n.toFixed(digits) : 'N/A';
+    }
+
+    function mToKm(m) {
+      return isNum(m) ? m / 1000 : null;
+    }
+
+    function mToMiles(m) {
+      return isNum(m) ? m / 1609.344 : null;
+    }
+
+    function isoOrNA(d) {
+      return d instanceof Date && Number.isFinite(d.getTime()) ? d.toISOString() : 'N/A';
+    }
+
+    function padRight(s, width) {
+      return String(s).padEnd(width, ' ');
+    }
+
+    function padLeft(s, width) {
+      return String(s).padStart(width, ' ');
+    }
+
+    function emptyHalfStats() {
+      return {
+        firstHalfTimeS: null,
+        secondHalfTimeS: null,
+        firstHalfAvgHr: null,
+        secondHalfAvgHr: null,
+        hrDriftPct: null,
+        paceChangePct: null
+      };
+    }
+
+    function firstObservedHr(points, targetMs) {
+      const hit = points.find(p => p.timeMs >= targetMs && isNum(p.hrBpm));
+      return hit ? hit.hrBpm : null;
+    }
+
+    function firstHrAtOrAfter(points, targetMs) {
+      const hit = points.find(p => p.timeMs >= targetMs && isNum(p.hrBpm));
+      return hit ? hit.hrBpm : null;
+    }
+
+    function computeWindowStats(points, startOffsetMs, endOffsetMs) {
+      if (!points.length || endOffsetMs <= startOffsetMs) return { hasData: false };
+      const startMs = points[0].timeMs + startOffsetMs;
+      const endMs = points[0].timeMs + endOffsetMs;
+      let durationS = 0;
+      let distanceM = 0;
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const segStart = Math.max(a.timeMs, startMs);
+        const segEnd = Math.min(b.timeMs, endMs);
+        if (segEnd <= segStart) continue;
+
+        const fullDt = (b.timeMs - a.timeMs) / 1000;
+        const partDt = (segEnd - segStart) / 1000;
+        if (fullDt <= 0 || partDt <= 0) continue;
+
+        let segDistanceM = 0;
+        if (isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          segDistanceM = (b.distanceM - a.distanceM) * (partDt / fullDt);
+        } else if (isNum(a.speedMps)) {
+          segDistanceM = a.speedMps * partDt;
+        }
+
+        durationS += partDt;
+        distanceM += segDistanceM;
+      }
+
+      return durationS > 0 ? { hasData: true, durationS, distanceM } : { hasData: false };
+    }
+
+    function parseLaps(xml) {
+      return Array.from(xml.getElementsByTagName('Lap')).map(lapEl => ({
+        startTime: parseDate(lapEl.getAttribute('StartTime')),
+        totalTimeS: parseNumber(getDirectText(lapEl, 'TotalTimeSeconds')),
+        distanceM: parseNumber(getDirectText(lapEl, 'DistanceMeters')),
+        avgHr: parseIntSafe(queryText(lapEl, 'AverageHeartRateBpm > Value')),
+        maxHr: parseIntSafe(queryText(lapEl, 'MaximumHeartRateBpm > Value'))
+      }));
+    }
+
+    function parseTrackpoints(xml) {
+      return Array.from(xml.getElementsByTagName('Trackpoint')).map(tp => {
+        const t = parseDate(getDirectText(tp, 'Time'));
+        return {
+          time: t,
+          timeMs: t?.getTime() ?? NaN,
+          latitude: parseNumber(queryText(tp, 'Position > LatitudeDegrees')),
+          longitude: parseNumber(queryText(tp, 'Position > LongitudeDegrees')),
+          altitudeM: parseNumber(getDirectText(tp, 'AltitudeMeters')),
+          distanceM: parseNumber(getDirectText(tp, 'DistanceMeters')),
+          hrBpm: parseIntSafe(queryText(tp, 'HeartRateBpm > Value')),
+          speedMps: parseNumber(queryText(tp, 'TPX > Speed'))
+        };
+      }).filter(p => p.time instanceof Date && Number.isFinite(p.timeMs));
+    }
+
+    function computeTotalDistance(points, laps) {
+      const pointDistances = points.map(p => p.distanceM).filter(isNum);
+      if (pointDistances.length) return Math.max(...pointDistances);
+      const lapDistances = laps.map(l => l.distanceM).filter(isNum);
+      if (lapDistances.length) return lapDistances.reduce((a, b) => a + b, 0);
+      return null;
+    }
+
+    function computeTotalTime(points, laps) {
+      if (points.length >= 2) {
+        return (points[points.length - 1].timeMs - points[0].timeMs) / 1000;
+      }
+      const lapTimes = laps.map(l => l.totalTimeS).filter(isNum);
+      if (lapTimes.length) return lapTimes.reduce((a, b) => a + b, 0);
+      return null;
+    }
+
+    function computeMovingTime(points, speedThresholdMps) {
+      if (points.length < 2) return null;
+      let moving = 0;
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0) continue;
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM > a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (isNum(speed) && speed >= speedThresholdMps) moving += dt;
+      }
+      return moving;
+    }
+
+    function weightedAverageHr(points) {
+      if (points.length < 2) {
+        const hrs = points.map(p => p.hrBpm).filter(isNum);
+        return hrs.length ? mean(hrs) : null;
+      }
+      let weighted = 0;
+      let total = 0;
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0 || !isNum(a.hrBpm)) continue;
+        weighted += a.hrBpm * dt;
+        total += dt;
+      }
+      return total > 0 ? weighted / total : null;
+    }
+
+    function altitudeStats(points) {
+      const vals = points.map(p => p.altitudeM).filter(isNum);
+      if (!vals.length) return { min: null, max: null, range: null };
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      return { min, max, range: max - min };
+    }
+
+    function heartRateZones(points, lthr) {
+      const zones = {
+        'Z1 (<80% LTHR)': 0,
+        'Z2 (80-89% LTHR)': 0,
+        'Z3 (89-95% LTHR)': 0,
+        'Z4 (95-100% LTHR)': 0,
+        'Z5 (>100% LTHR)': 0
+      };
+      if (points.length < 2) return zones;
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0 || !isNum(a.hrBpm)) continue;
+        const frac = a.hrBpm / lthr;
+        if (frac < 0.80) zones['Z1 (<80% LTHR)'] += dt;
+        else if (frac < 0.89) zones['Z2 (80-89% LTHR)'] += dt;
+        else if (frac < 0.95) zones['Z3 (89-95% LTHR)'] += dt;
+        else if (frac <= 1.0) zones['Z4 (95-100% LTHR)'] += dt;
+        else zones['Z5 (>100% LTHR)'] += dt;
+      }
+      return zones;
+    }
+
+    function makeDistanceSplits(points, splitM) {
+      const valid = points.filter(p => isNum(p.distanceM));
+      if (valid.length < 2) return [];
+      const splits = [];
+      let nextMarker = splitM;
+      let prevMarkerTime = valid[0].timeMs;
+
+      for (let i = 1; i < valid.length; i++) {
+        const prev = valid[i - 1];
+        const cur = valid[i];
+        while (cur.distanceM >= nextMarker) {
+          const distSpan = cur.distanceM - prev.distanceM;
+          if (distSpan <= 0) break;
+          const frac = clamp((nextMarker - prev.distanceM) / distSpan, 0, 1);
+          const markerTimeMs = prev.timeMs + frac * (cur.timeMs - prev.timeMs);
+          const splitTimeS = (markerTimeMs - prevMarkerTime) / 1000;
+          const cumulativeTimeS = (markerTimeMs - valid[0].timeMs) / 1000;
+          splits.push({
+            splitIndex: splits.length + 1,
+            splitTimeS,
+            cumulativeTimeS,
+            pacePerKm: formatDuration(splitTimeS / (splitM / 1000)),
+            pacePerMile: formatDuration(splitTimeS / (splitM / 1609.344))
+          });
+          prevMarkerTime = markerTimeMs;
+          nextMarker += splitM;
+        }
+      }
+      return splits;
+    }
+
+
+    function sampleTimeSeries(points, everyNSeconds) {
+      if (!points.length) return [];
+      const sampled = [points[0]];
+      let lastTimeMs = points[0].timeMs;
+      for (let i = 1; i < points.length; i++) {
+        if ((points[i].timeMs - lastTimeMs) / 1000 >= everyNSeconds) {
+          sampled.push(points[i]);
+          lastTimeMs = points[i].timeMs;
+        }
+      }
+      if (sampled[sampled.length - 1] !== points[points.length - 1]) sampled.push(points[points.length - 1]);
+      return sampled;
+    }
+
+    function computeFirstSecondHalfStats(points) {
+      const valid = points.filter(p => isNum(p.distanceM));
+      if (valid.length < 2) {
+        return emptyHalfStats();
+      }
+      const totalDistanceM = valid[valid.length - 1].distanceM;
+      if (!isNum(totalDistanceM) || totalDistanceM <= 0) return emptyHalfStats();
+
+      const halfwayM = totalDistanceM / 2;
+      const startTimeMs = valid[0].timeMs;
+      let halfwayTimeMs = null;
+
+      for (let i = 1; i < valid.length; i++) {
+        const prev = valid[i - 1];
+        const cur = valid[i];
+        if (prev.distanceM <= halfwayM && halfwayM <= cur.distanceM && cur.distanceM > prev.distanceM) {
+          const frac = clamp((halfwayM - prev.distanceM) / (cur.distanceM - prev.distanceM), 0, 1);
+          halfwayTimeMs = prev.timeMs + frac * (cur.timeMs - prev.timeMs);
+          break;
+        }
+      }
+      if (halfwayTimeMs == null) return emptyHalfStats();
+
+      const endTimeMs = valid[valid.length - 1].timeMs;
+      const firstHalfTimeS = (halfwayTimeMs - startTimeMs) / 1000;
+      const secondHalfTimeS = (endTimeMs - halfwayTimeMs) / 1000;
+
+      let firstHrWeighted = 0, firstHrTime = 0, secondHrWeighted = 0, secondHrTime = 0;
+      let firstDistanceM = 0, secondDistanceM = 0;
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const segDt = (b.timeMs - a.timeMs) / 1000;
+        if (segDt <= 0) continue;
+
+        let segDistanceM = 0;
+        if (isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          segDistanceM = b.distanceM - a.distanceM;
+        } else if (isNum(a.speedMps)) {
+          segDistanceM = a.speedMps * segDt;
+        }
+
+        const overlapFirst = Math.max(0, (Math.min(b.timeMs, halfwayTimeMs) - a.timeMs) / 1000);
+        const overlapSecond = Math.max(0, (b.timeMs - Math.max(a.timeMs, halfwayTimeMs)) / 1000);
+
+        if (overlapFirst > 0) {
+          const fracFirst = overlapFirst / segDt;
+          firstDistanceM += segDistanceM * fracFirst;
+          if (isNum(a.hrBpm)) {
+            firstHrWeighted += a.hrBpm * overlapFirst;
+            firstHrTime += overlapFirst;
+          }
+        }
+
+        if (overlapSecond > 0) {
+          const fracSecond = overlapSecond / segDt;
+          secondDistanceM += segDistanceM * fracSecond;
+          if (isNum(a.hrBpm)) {
+            secondHrWeighted += a.hrBpm * overlapSecond;
+            secondHrTime += overlapSecond;
+          }
+        }
+      }
+
+      const firstHalfAvgHr = firstHrTime > 0 ? firstHrWeighted / firstHrTime : null;
+      const secondHalfAvgHr = secondHrTime > 0 ? secondHrWeighted / secondHrTime : null;
+      const firstHalfAvgSpeedMps = firstHalfTimeS > 0 ? firstDistanceM / firstHalfTimeS : null;
+      const secondHalfAvgSpeedMps = secondHalfTimeS > 0 ? secondDistanceM / secondHalfTimeS : null;
+
+      let hrDriftPct = null;
+      if ([firstHalfAvgHr, secondHalfAvgHr, firstHalfAvgSpeedMps, secondHalfAvgSpeedMps].every(isNum) && firstHalfAvgSpeedMps > 0 && secondHalfAvgSpeedMps > 0) {
+        const firstRatio = firstHalfAvgHr / firstHalfAvgSpeedMps;
+        const secondRatio = secondHalfAvgHr / secondHalfAvgSpeedMps;
+        if (firstRatio > 0) hrDriftPct = ((secondRatio / firstRatio) - 1) * 100;
+      }
+
+      let paceChangePct = null;
+      if (firstHalfTimeS > 0 && secondHalfTimeS > 0) {
+        const firstHalfPace = firstHalfTimeS / (halfwayM / 1000);
+        const secondHalfPace = secondHalfTimeS / (halfwayM / 1000);
+        if (firstHalfPace > 0) paceChangePct = ((secondHalfPace / firstHalfPace) - 1) * 100;
+      }
+
+      return { firstHalfTimeS, secondHalfTimeS, firstHalfAvgHr, secondHalfAvgHr, hrDriftPct, paceChangePct };
+    }
+
+    function computeBestSegmentEfforts(points, distancesM) {
+      const valid = points.filter(p => isNum(p.distanceM));
+      if (valid.length < 2) return [];
+      const results = [];
+
+      for (const targetDistanceM of distancesM) {
+        let bestTimeS = null;
+        let bestStartTime = null;
+        let bestEndTime = null;
+        let j = 0;
+
+        for (let i = 0; i < valid.length - 1; i++) {
+          const startDistance = valid[i].distanceM;
+          const target = startDistance + targetDistanceM;
+          while (j < valid.length && (!isNum(valid[j].distanceM) || valid[j].distanceM < target)) {
+            j++;
+          }
+          if (j >= valid.length) break;
+
+          const prev = j > 0 ? valid[j - 1] : valid[j];
+          const cur = valid[j];
+          if (!isNum(prev.distanceM) || !isNum(cur.distanceM) || cur.distanceM === prev.distanceM) continue;
+
+          const frac = clamp((target - prev.distanceM) / (cur.distanceM - prev.distanceM), 0, 1);
+          const endTimeMs = prev.timeMs + frac * (cur.timeMs - prev.timeMs);
+          const effortTimeS = (endTimeMs - valid[i].timeMs) / 1000;
+          if (bestTimeS == null || effortTimeS < bestTimeS) {
+            bestTimeS = effortTimeS;
+            bestStartTime = valid[i].time;
+            bestEndTime = new Date(endTimeMs);
+          }
+        }
+
+        results.push({ distanceM: targetDistanceM, bestTimeS, bestStartTime, bestEndTime });
+      }
+      return results;
+    }
+
+
+
+    function computeSteadyRunAnalysis(points, totalDistanceM) {
+      const steadySegments = [];
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0) continue;
+
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (!isNum(speed)) continue;
+
+        const elapsedMin = (a.timeMs - points[0].timeMs) / 60000;
+        const isSteadyRun = elapsedMin >= STEADY_RUN_START_MIN && speed >= RUN_WALK_THRESHOLD_MPS;
+        if (!isSteadyRun) continue;
+
+        const distanceM = isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM ? b.distanceM - a.distanceM : speed * dt;
+        steadySegments.push({
+          timeMs: a.timeMs,
+          hrBpm: a.hrBpm,
+          speedMps: speed,
+          durationS: dt,
+          distanceM,
+          beforeFirstWalk: true
+        });
+      }
+
+      if (!steadySegments.length) {
+        return {
+          hasSteadyData: false,
+          steadyTimeS: null,
+          steadyDistanceM: null,
+          steadyAvgHr: null,
+          decouplingPct: null
+        };
+      }
+
+      const steadyTimeS = steadySegments.reduce((a, s) => a + s.durationS, 0);
+      const steadyDistanceM = steadySegments.reduce((a, s) => a + s.distanceM, 0);
+      const hrWeighted = steadySegments.filter(s => isNum(s.hrBpm)).reduce((a, s) => a + (s.hrBpm * s.durationS), 0);
+      const hrTime = steadySegments.filter(s => isNum(s.hrBpm)).reduce((a, s) => a + s.durationS, 0);
+      const steadyAvgHr = hrTime > 0 ? hrWeighted / hrTime : null;
+
+      const decouplingPct = computeSegmentDecoupling(steadySegments);
+
+      return {
+        hasSteadyData: true,
+        steadyTimeS,
+        steadyDistanceM,
+        steadyAvgHr,
+        decouplingPct
+      };
+    }
+
+    function computeCleanAerobicMinutes(points, lthr, steadyRunAnalysis) {
+      if (points.length < 2 || !isNum(lthr) || lthr <= 0) {
+        return { hasData: false };
+      }
+
+      const hrCap = Math.round(lthr * 0.89);
+      const decouplingGatePct = DECOUPLING_GATE_PCT;
+      const cleanSegments = [];
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0 || !isNum(a.hrBpm)) continue;
+
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (!isNum(speed) || speed < RUN_WALK_THRESHOLD_MPS) continue;
+
+        const elapsedMin = (a.timeMs - points[0].timeMs) / 60000;
+        if (elapsedMin < STEADY_RUN_START_MIN) continue;
+        if (a.hrBpm > hrCap) continue;
+
+        const distanceM = isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM
+          ? b.distanceM - a.distanceM
+          : speed * dt;
+
+        cleanSegments.push({
+          startMs: a.timeMs,
+          durationS: dt,
+          distanceM,
+          hrBpm: a.hrBpm,
+          speedMps: speed
+        });
+      }
+
+      if (!cleanSegments.length) {
+        return { hasData: false };
+      }
+
+      let usableSegments = cleanSegments;
+      if (isNum(steadyRunAnalysis?.decouplingPct) && steadyRunAnalysis.decouplingPct > decouplingGatePct) {
+        const firstHalfCutoff = Math.floor(cleanSegments.length / 2);
+        usableSegments = cleanSegments.slice(0, Math.max(1, firstHalfCutoff));
+      }
+
+      if (!usableSegments.length) {
+        return { hasData: false };
+      }
+
+      const cleanTimeS = usableSegments.reduce((a, s) => a + s.durationS, 0);
+      const cleanDistanceM = usableSegments.reduce((a, s) => a + s.distanceM, 0);
+
+      let longestStreakS = 0;
+      let currentStreakS = 0;
+      let lastEndMs = null;
+
+      for (const seg of usableSegments) {
+        const segEndMs = seg.startMs + seg.durationS * 1000;
+        if (lastEndMs != null && seg.startMs - lastEndMs <= 1500) {
+          currentStreakS += seg.durationS;
+        } else {
+          currentStreakS = seg.durationS;
+        }
+        if (currentStreakS > longestStreakS) longestStreakS = currentStreakS;
+        lastEndMs = segEndMs;
+      }
+
+      let note = 'Clean aerobic minutes reflect continuous running after minute 10, below the HR cap, before walk breakdown.';
+      if (isNum(steadyRunAnalysis?.decouplingPct) && steadyRunAnalysis.decouplingPct > decouplingGatePct) {
+        note = 'Clean aerobic minutes were conservatively limited because steady-state decoupling exceeded the gate.';
+      }
+
+      return {
+        hasData: true,
+        cleanTimeS,
+        cleanDistanceM,
+        longestStreakS,
+        hrCap,
+        decouplingGatePct,
+        note
+      };
+    }
+
+    function computeSegmentDecoupling(segments) {
+      if (!segments.length) return null;
+      const midIndex = Math.floor(segments.length / 2);
+      const first = segments.slice(0, midIndex);
+      const second = segments.slice(midIndex);
+      if (!first.length || !second.length) return null;
+
+      const firstStats = aggregateSegments(first);
+      const secondStats = aggregateSegments(second);
+      if (!isNum(firstStats.avgHr) || !isNum(secondStats.avgHr) || !isNum(firstStats.avgSpeedMps) || !isNum(secondStats.avgSpeedMps) || firstStats.avgSpeedMps <= 0 || secondStats.avgSpeedMps <= 0) {
+        return null;
+      }
+
+      const firstRatio = firstStats.avgHr / firstStats.avgSpeedMps;
+      const secondRatio = secondStats.avgHr / secondStats.avgSpeedMps;
+      if (firstRatio <= 0) return null;
+      return ((secondRatio / firstRatio) - 1) * 100;
+    }
+
+    function weightedAveragePace(segments) {
+      if (!segments.length) return null;
+      const totalDurationS = segments.reduce((a, s) => a + s.durationS, 0);
+      if (!isNum(totalDurationS) || totalDurationS <= 0) return null;
+      const weightedPace = segments.reduce((a, s) => a + (s.paceSecPerKm * s.durationS), 0);
+      return weightedPace / totalDurationS;
+    }
+
+    function aggregateSegments(segments) {
+      const timeS = segments.reduce((a, s) => a + s.durationS, 0);
+      const distanceM = segments.reduce((a, s) => a + s.distanceM, 0);
+      const hrWeighted = segments.filter(s => isNum(s.hrBpm)).reduce((a, s) => a + (s.hrBpm * s.durationS), 0);
+      const hrTime = segments.filter(s => isNum(s.hrBpm)).reduce((a, s) => a + s.durationS, 0);
+      return {
+        avgHr: hrTime > 0 ? hrWeighted / hrTime : null,
+        avgSpeedMps: timeS > 0 ? distanceM / timeS : null
+      };
+    }
+
+    function computeHrSpeedRatio(segments) {
+      if (!segments.length) return null;
+      const hrWeighted = segments.filter(s => isNum(s.hrBpm)).reduce((a, s) => a + (s.hrBpm * s.durationS), 0);
+      const timeS = segments.filter(s => isNum(s.hrBpm)).reduce((a, s) => a + s.durationS, 0);
+      const distanceM = segments.filter(s => isNum(s.hrBpm)).reduce((a, s) => a + (s.speedMps * s.durationS), 0);
+      if (timeS <= 0 || distanceM <= 0) return null;
+      const avgHr = hrWeighted / timeS;
+      const avgSpeedMps = distanceM / timeS;
+      if (!isNum(avgHr) || !isNum(avgSpeedMps) || avgSpeedMps <= 0) return null;
+      return avgHr / avgSpeedMps;
+    }
+
+
+
+
+
+
+    function computeFatigueOnset(points) {
+      if (points.length < 2) {
+        return { hasData: false };
+      }
+
+      const filtered = [];
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0) continue;
+
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (!isNum(speed) || speed <= 0) continue;
+
+        const elapsedMin = (a.timeMs - points[0].timeMs) / 60000;
+        const distanceM = isNum(a.distanceM) ? a.distanceM : null;
+        filtered.push({
+          timeMs: a.timeMs,
+          elapsedMin,
+          distanceM,
+          durationS: dt,
+          paceSecPerKm: 1000 / speed
+        });
+      }
+
+      const baselineSegments = filtered.filter(seg => seg.elapsedMin >= 5 && seg.elapsedMin < 15);
+      const baseline = weightedAveragePace(baselineSegments);
+      if (!isNum(baseline) || baseline <= 0) {
+        return { hasData: false };
+      }
+
+      const slowdownThresholdPct = 10;
+      const requiredWindowS = 120;
+
+      for (let i = 0; i < filtered.length; i++) {
+        let windowDurationS = 0;
+        let weightedPace = 0;
+        const anchorDistanceM = filtered[i].distanceM;
+        const anchorElapsedMin = filtered[i].elapsedMin;
+
+        for (let j = i; j < filtered.length; j++) {
+          const seg = filtered[j];
+          windowDurationS += seg.durationS;
+          weightedPace += seg.paceSecPerKm * seg.durationS;
+
+          if (windowDurationS >= requiredWindowS) {
+            const onsetPaceSecPerKm = weightedPace / windowDurationS;
+            const slowdownPct = ((onsetPaceSecPerKm / baseline) - 1) * 100;
+
+            if (slowdownPct >= slowdownThresholdPct) {
+              return {
+                hasData: true,
+                elapsedMin: anchorElapsedMin,
+                distanceM: anchorDistanceM,
+                baselinePaceSecPerKm: baseline,
+                onsetPaceSecPerKm,
+                slowdownPct,
+                windowDurationS
+              };
+            }
+            break;
+          }
+        }
+      }
+
+      return { hasData: false };
+    }
+
+    function computeEarlyRunAggression(points, totalTimeS, totalDistanceM, lthr) {
+      if (points.length < 2 || !isNum(totalTimeS) || !isNum(totalDistanceM) || totalTimeS <= 0 || totalDistanceM <= 0 || !isNum(lthr) || lthr <= 0) {
+        return { hasData: false };
+      }
+
+      const ignoredStartMin = 2;
+      const windowStartMs = 120000;
+      const windowEndMs = 300000;
+      const tenMinMs = 600000;
+
+      const earlyWindow = computeWindowStats(points, windowStartMs, windowEndMs);
+      if (!earlyWindow.hasData || !isNum(earlyWindow.distanceM) || earlyWindow.distanceM <= 0) {
+        return { hasData: false };
+      }
+
+      const fullRunPaceSecPerKm = totalTimeS / (totalDistanceM / 1000);
+      const windowPaceSecPerKm = earlyWindow.durationS / (earlyWindow.distanceM / 1000);
+      const windowVsAveragePct = ((windowPaceSecPerKm / fullRunPaceSecPerKm) - 1) * 100;
+
+      const hrAt2Min = firstObservedHr(points, points[0].timeMs + windowStartMs);
+      const hrAt5Min = firstObservedHr(points, points[0].timeMs + windowEndMs);
+      const hrAt10Min = firstObservedHr(points, points[0].timeMs + tenMinMs);
+
+      const hrRise2to5 = isNum(hrAt2Min) && isNum(hrAt5Min) ? hrAt5Min - hrAt2Min : null;
+      const hrRise2to10 = isNum(hrAt2Min) && isNum(hrAt10Min) ? hrAt10Min - hrAt2Min : null;
+      const lthrFrac5Min = isNum(hrAt5Min) ? hrAt5Min / lthr : null;
+      const lthrFrac10Min = isNum(hrAt10Min) ? hrAt10Min / lthr : null;
+
+      let score = 0;
+      if (windowVsAveragePct <= -8) score += 2;
+      else if (windowVsAveragePct <= -4) score += 1;
+
+      if (isNum(lthrFrac5Min) && lthrFrac5Min >= 0.95) score += 2;
+      else if (isNum(lthrFrac5Min) && lthrFrac5Min >= 0.90) score += 1;
+
+      if (isNum(lthrFrac10Min) && lthrFrac10Min >= 0.98) score += 1;
+      if (isNum(hrRise2to10) && hrRise2to10 >= 20) score += 1;
+
+      let scoreLabel = 'Controlled';
+      let note = 'Early pacing and early HR relative to LTHR looked controlled after the first 2 minutes.';
+      if (score >= 4) {
+        scoreLabel = 'Very aggressive';
+        note = 'You were running fast and/or near threshold too early relative to LTHR.';
+      } else if (score >= 2) {
+        scoreLabel = 'Moderately aggressive';
+        note = 'Early pacing or early HR climbed faster than ideal relative to LTHR.';
+      }
+
+      return {
+        hasData: true,
+        ignoredStartMin,
+        windowPaceSecPerKm,
+        fullRunPaceSecPerKm,
+        windowVsAveragePct,
+        hrAt2Min,
+        hrAt5Min,
+        hrAt10Min,
+        lthrFrac5Min,
+        lthrFrac10Min,
+        hrRise2to5,
+        hrRise2to10,
+        scoreLabel,
+        note
+      };
+    }
+
+    function computeDurabilityScore(steadyRunAnalysis, halfStats) {
+      let score = 10;
+
+      let decouplingFactor = 'None';
+      const decoupling = steadyRunAnalysis?.decouplingPct;
+      if (isNum(decoupling)) {
+        if (decoupling >= 8) {
+          score -= 2.0;
+          decouplingFactor = 'Large penalty';
+        } else if (decoupling >= 5) {
+          score -= 1.0;
+          decouplingFactor = 'Moderate penalty';
+        } else if (decoupling >= 3) {
+          score -= 0.5;
+          decouplingFactor = 'Small penalty';
+        }
+      }
+
+      let lateFadeFactor = 'None';
+      const lateFade = halfStats?.paceChangePct;
+      if (isNum(lateFade)) {
+        if (lateFade >= 10) {
+          score -= 2.5;
+          lateFadeFactor = 'Large penalty';
+        } else if (lateFade >= 5) {
+          score -= 1.5;
+          lateFadeFactor = 'Moderate penalty';
+        } else if (lateFade >= 2) {
+          score -= 0.5;
+          lateFadeFactor = 'Small penalty';
+        }
+      }
+
+      score = Math.max(0, Math.min(10, score));
+
+      let label = 'Excellent';
+      let note = 'Durability was strong across the run.';
+      if (score < 4) {
+        label = 'Fragile';
+        note = 'Durability faded meaningfully. Progress duration and pace cautiously.';
+      } else if (score < 6) {
+        label = 'Limited';
+        note = 'Durability was mixed. The run showed clear breakdown markers.';
+      } else if (score < 8) {
+        label = 'Moderate';
+        note = 'Durability was acceptable, but there were notable weak points.';
+      } else if (score < 9.5) {
+        label = 'Good';
+        note = 'Durability was solid with only minor signs of breakdown.';
+      }
+
+      return {
+        score,
+        label,
+        decouplingFactor,
+        lateFadeFactor,
+        note
+      };
+    }
+
+    function computeAerobicCeiling(points) {
+      if (points.length < 2) {
+        return { hasData: false };
+      }
+
+      const steadySegments = [];
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0) continue;
+
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (!isNum(speed) || speed < RUN_WALK_THRESHOLD_MPS) continue;
+
+        const elapsedMin = (a.timeMs - points[0].timeMs) / 60000;
+        if (elapsedMin < STEADY_RUN_START_MIN) continue;
+
+        const distanceM = isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM ? b.distanceM - a.distanceM : speed * dt;
+        steadySegments.push({
+          hrBpm: a.hrBpm,
+          durationS: dt,
+          distanceM,
+          speedMps: speed
+        });
+      }
+
+      if (steadySegments.length < 8) {
+        return { hasData: false };
+      }
+
+      let best = null;
+      const prefix = [];
+
+      for (const seg of steadySegments) {
+        prefix.push(seg);
+        const totalTimeS = prefix.reduce((a, s) => a + s.durationS, 0);
+        const totalDistanceM = prefix.reduce((a, s) => a + s.distanceM, 0);
+        if (totalTimeS < 720 || totalDistanceM <= 0) continue;
+
+        const decouplingPct = computeSegmentDecoupling(prefix);
+        if (!isNum(decouplingPct) || decouplingPct > DECOUPLING_GATE_PCT) continue;
+
+        const hrWeighted = prefix.filter(s => isNum(s.hrBpm)).reduce((a, s) => a + (s.hrBpm * s.durationS), 0);
+        const hrTime = prefix.filter(s => isNum(s.hrBpm)).reduce((a, s) => a + s.durationS, 0);
+        if (hrTime <= 0) continue;
+
+        const ceilingHr = hrWeighted / hrTime;
+        if (!best || ceilingHr > best.ceilingHr) {
+          best = {
+            hasData: true,
+            ceilingHr,
+            supportingTimeS: totalTimeS,
+            supportingDistanceM: totalDistanceM,
+            decouplingPct,
+            basis: 'Highest average HR sustained for at least 12 steady minutes with decoupling at or below 5%.'
+          };
+        }
+      }
+
+      return best || { hasData: false };
+    }
+
+    function computeCardiacEfficiencyTrend(points) {
+      if (points.length < 2) {
+        return { hasData: false };
+      }
+
+      const steadySegments = [];
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0 || !isNum(a.hrBpm)) continue;
+
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (!isNum(speed) || speed < RUN_WALK_THRESHOLD_MPS) continue;
+
+        const elapsedMin = (a.timeMs - points[0].timeMs) / 60000;
+        if (elapsedMin < STEADY_RUN_START_MIN) continue;
+
+        steadySegments.push({
+          hrBpm: a.hrBpm,
+          durationS: dt,
+          speedMps: speed
+        });
+      }
+
+      const totalSteadyTimeS = steadySegments.reduce((a, s) => a + s.durationS, 0);
+      if (steadySegments.length < 8 || totalSteadyTimeS < 600) {
+        return { hasData: false };
+      }
+
+      const midIndex = Math.floor(steadySegments.length / 2);
+      const firstHalf = steadySegments.slice(0, midIndex);
+      const secondHalf = steadySegments.slice(midIndex);
+      if (!firstHalf.length || !secondHalf.length) {
+        return { hasData: false };
+      }
+
+      const firstHalfRatio = computeHrSpeedRatio(firstHalf);
+      const secondHalfRatio = computeHrSpeedRatio(secondHalf);
+      if (!isNum(firstHalfRatio) || !isNum(secondHalfRatio) || firstHalfRatio <= 0) {
+        return { hasData: false };
+      }
+
+      const efficiencyChangePct = ((secondHalfRatio / firstHalfRatio) - 1) * 100;
+
+      let label = 'Stable';
+      let note = 'Cardiac efficiency stayed fairly stable across the steady portion.';
+      if (efficiencyChangePct >= 8) {
+        label = 'Strong deterioration';
+        note = 'HR cost rose meaningfully relative to speed as the run progressed.';
+      } else if (efficiencyChangePct >= 4) {
+        label = 'Moderate deterioration';
+        note = 'Cardiac efficiency worsened noticeably late in the steady portion.';
+      } else if (efficiencyChangePct >= 2) {
+        label = 'Mild deterioration';
+        note = 'There was a small late-run efficiency loss.';
+      } else if (efficiencyChangePct <= -2) {
+        label = 'Improving';
+        note = 'HR cost relative to speed improved across the steady portion.';
+      }
+
+      return {
+        hasData: true,
+        totalSteadyTimeS,
+        firstHalfRatio,
+        secondHalfRatio,
+        efficiencyChangePct,
+        label,
+        note
+      };
+    }
+
+    function computePaceVariabilityIndex(points) {
+      if (points.length < 2) {
+        return { hasData: false };
+      }
+
+      const runSegments = [];
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0) continue;
+
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (!isNum(speed) || speed < RUN_WALK_THRESHOLD_MPS) continue;
+
+        runSegments.push({
+          durationS: dt,
+          paceSecPerKm: 1000 / speed
+        });
+      }
+
+      if (runSegments.length < 8) {
+        return { hasData: false };
+      }
+
+      const totalRunTimeS = runSegments.reduce((a, s) => a + s.durationS, 0);
+      if (totalRunTimeS <= 0) {
+        return { hasData: false };
+      }
+
+      const avgPaceSecPerKm = runSegments.reduce((a, s) => a + (s.paceSecPerKm * s.durationS), 0) / totalRunTimeS;
+      if (!isNum(avgPaceSecPerKm) || avgPaceSecPerKm <= 0) {
+        return { hasData: false };
+      }
+
+      const variance = runSegments.reduce((a, s) => {
+        const diff = s.paceSecPerKm - avgPaceSecPerKm;
+        return a + (diff * diff * s.durationS);
+      }, 0) / totalRunTimeS;
+
+      const stdDevSecPerKm = Math.sqrt(variance);
+      const cvPct = (stdDevSecPerKm / avgPaceSecPerKm) * 100;
+
+      let label = 'Very steady';
+      let note = 'Pacing was highly consistent across the run.';
+      if (cvPct >= 10) {
+        label = 'Highly variable';
+        note = 'Pacing varied substantially, suggesting surging, breakdown, terrain effects, or repeated resets.';
+      } else if (cvPct >= 7) {
+        label = 'Moderately variable';
+        note = 'Pacing was noticeably inconsistent across the run.';
+      } else if (cvPct >= 4) {
+        label = 'Mildly variable';
+        note = 'Pacing was mostly controlled with some fluctuation.';
+      }
+
+      return {
+        hasData: true,
+        totalRunTimeS,
+        avgPaceSecPerKm,
+        stdDevSecPerKm,
+        cvPct,
+        label,
+        note
+      };
+    }
+
+    function computeHrStabilityIndex(points) {
+      if (points.length < 2) {
+        return { hasData: false };
+      }
+      const steadySegments = [];
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0 || !isNum(a.hrBpm)) continue;
+
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (!isNum(speed) || speed < RUN_WALK_THRESHOLD_MPS) continue;
+
+        const elapsedMin = (a.timeMs - points[0].timeMs) / 60000;
+        if (elapsedMin < STEADY_RUN_START_MIN) continue;
+
+        steadySegments.push({
+          hrBpm: a.hrBpm,
+          durationS: dt
+        });
+      }
+
+      if (steadySegments.length < 8) {
+        return { hasData: false };
+      }
+
+      const totalSteadyTimeS = steadySegments.reduce((a, s) => a + s.durationS, 0);
+      if (totalSteadyTimeS < 600) {
+        return { hasData: false };
+      }
+
+      const avgHr = steadySegments.reduce((a, s) => a + (s.hrBpm * s.durationS), 0) / totalSteadyTimeS;
+      if (!isNum(avgHr) || avgHr <= 0) {
+        return { hasData: false };
+      }
+
+      const variance = steadySegments.reduce((a, s) => {
+        const diff = s.hrBpm - avgHr;
+        return a + (diff * diff * s.durationS);
+      }, 0) / totalSteadyTimeS;
+
+      const stdDevHr = Math.sqrt(variance);
+      const cvPct = (stdDevHr / avgHr) * 100;
+
+      let label = 'Very stable';
+      let note = 'Heart rate stayed highly controlled during the steady portion.';
+      if (cvPct >= 8) {
+        label = 'Highly variable';
+        note = 'Heart rate fluctuated substantially during steady running.';
+      } else if (cvPct >= 6) {
+        label = 'Moderately variable';
+        note = 'Heart rate showed noticeable fluctuation during the steady portion.';
+      } else if (cvPct >= 4) {
+        label = 'Mildly variable';
+        note = 'Heart rate was mostly controlled with some variation.';
+      }
+
+      return {
+        hasData: true,
+        totalSteadyTimeS,
+        avgHr,
+        stdDevHr,
+        cvPct,
+        label,
+        note
+      };
+    }
+
+    function computeHrPaceCoupling(points) {
+      if (points.length < 2) {
+        return { hasData: false };
+      }
+
+      const samples = [];
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0 || !isNum(a.hrBpm)) continue;
+
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (!isNum(speed) || speed < RUN_WALK_THRESHOLD_MPS) continue;
+
+        const elapsedMin = (a.timeMs - points[0].timeMs) / 60000;
+        if (elapsedMin < STEADY_RUN_START_MIN) continue;
+
+        samples.push({ hr: a.hrBpm, speed });
+      }
+
+      if (samples.length < 20) {
+        return { hasData: false };
+      }
+
+      const hrVals = samples.map(s => s.hr);
+      const speedVals = samples.map(s => s.speed);
+
+      const hrMean = mean(hrVals);
+      const speedMean = mean(speedVals);
+
+      let num = 0;
+      let denomHr = 0;
+      let denomSpeed = 0;
+
+      for (let i = 0; i < samples.length; i++) {
+        const dh = samples[i].hr - hrMean;
+        const ds = samples[i].speed - speedMean;
+        num += dh * ds;
+        denomHr += dh * dh;
+        denomSpeed += ds * ds;
+      }
+
+      if (denomHr === 0 || denomSpeed === 0) {
+        return { hasData: false };
+      }
+
+      const r = num / Math.sqrt(denomHr * denomSpeed);
+
+      let label = 'Strong';
+      let note = 'Heart rate tracked pace closely, indicating strong aerobic control.';
+
+      if (r < 0.5) {
+        label = 'Weak';
+        note = 'Heart rate and pace were poorly coupled, suggesting drift or instability.';
+      } else if (r < 0.7) {
+        label = 'Moderate';
+        note = 'Heart rate tracked pace somewhat, but with noticeable drift.';
+      }
+
+      return {
+        hasData: true,
+        correlation: r,
+        label,
+        note
+      };
+    }
+
+
+    function summarizeLapForStructured(lap) {
+      if (!lap) return { summary: 'N/A' };
+      const dist = lap.distanceM != null ? `${fmt(mToMiles(lap.distanceM), 3)} mi` : 'N/A';
+      const pace = formatPaceFromTimeDistance(lap.totalTimeS, lap.distanceM, 'mile');
+      const hr = lap.avgHr != null ? `${lap.avgHr} bpm` : 'N/A';
+      return {
+        summary: `Lap ${lap.index} | ${formatDuration(lap.totalTimeS)} | ${dist} | ${pace}/mile | AvgHR ${hr}`
+      };
+    }
+
+    function intentLabelFromValue(val) {
+      if (val === 'intervals') return 'Intervals / structured workout';
+      if (val === 'steady') return 'Steady run';
+      return 'Unknown';
+    }
+
+    function computeStructuredWorkoutAnalysis(laps, sessionIntent) {
+      const supported = new Set(['intervals']);
+      if (!supported.has(sessionIntent)) {
+        return { hasData: false, note: 'Structured workout analysis only runs when session intent is set to Intervals / structured workout.' };
+      }
+      if (!Array.isArray(laps) || laps.length < 5) {
+        return { hasData: false, note: `Not enough laps for structured analysis. Found ${Array.isArray(laps) ? laps.length : 0} lap(s); need at least 5.` };
+      }
+
+      const indexedLaps = laps.map((lap, idx) => ({ ...lap, index: idx + 1 }));
+      const warmup = indexedLaps[0] || null;
+      const prep = indexedLaps[1] || null;
+      const finalWalk = indexedLaps[indexedLaps.length - 1] || null;
+      const cooldown = indexedLaps[indexedLaps.length - 2] || null;
+      const preCooldownRest = indexedLaps[indexedLaps.length - 3] || null;
+      const intervalLaps = indexedLaps.slice(2, Math.max(2, indexedLaps.length - 3));
+      const workOnlyLaps = intervalLaps.filter((lap, idx) => idx % 2 === 0);
+      const recoveryLaps = intervalLaps.filter((lap, idx) => idx % 2 === 1);
+
+      // Precompute pace per mile for valid work laps to derive "best" pace
+      const validForBest = workOnlyLaps
+        .map(lap => ({
+          lap,
+          paceSecPerMile: isNum(lap.totalTimeS) && isNum(lap.distanceM) && lap.distanceM > 0
+            ? (lap.totalTimeS / (lap.distanceM / 1609.344))
+            : null
+        }))
+        .filter(x => isNum(x.paceSecPerMile));
+
+      const bestPaceSecPerMile = validForBest.length
+        ? Math.min(...validForBest.map(x => x.paceSecPerMile))
+        : null;
+
+      const workRepSummaries = workOnlyLaps.map((lap, idx) => {
+        const repNum = idx + 1;
+        const dist = lap.distanceM != null ? `${fmt(mToMiles(lap.distanceM), 3)} mi` : 'N/A';
+        const pace = formatPaceFromTimeDistance(lap.totalTimeS, lap.distanceM, 'mile');
+        const hrAvg = lap.avgHr != null ? `${lap.avgHr} bpm` : 'N/A';
+        const hrMax = lap.maxHr != null ? `${lap.maxHr} bpm` : 'N/A';
+
+
+        const recoveryLap = recoveryLaps[idx] || null;
+        const recDur = recoveryLap ? formatDuration(recoveryLap.totalTimeS) : 'N/A';
+        const recDist = recoveryLap?.distanceM != null ? `${fmt(mToMiles(recoveryLap.distanceM), 3)} mi` : 'N/A';
+        const recPace = recoveryLap ? formatPaceFromTimeDistance(recoveryLap.totalTimeS, recoveryLap.distanceM, 'mile') : 'N/A';
+        const recHrAvg = recoveryLap?.avgHr != null ? `${recoveryLap.avgHr} bpm` : 'N/A';
+
+        const onOff = recoveryLap ? `${formatDuration(lap.totalTimeS)} on / ${recDur} off` : `${formatDuration(lap.totalTimeS)} on`;
+
+        return `${padRight(`Rep ${repNum} (Lap ${lap.index})`, 20)} | ` +
+               `${padRight(onOff, 18)} | ` +
+               `${padRight(dist, 10)} | ` +
+               `${padRight(pace + '/mile', 12)} | ` +
+               `${padRight('AvgHR ' + hrAvg, 16)} | ` +
+               `${padRight('MaxHR ' + hrMax, 16)} | ` +
+               `${padRight('Rec ' + recDur, 10)} | ` +
+               `${padRight(recDist, 10)} | ` +
+               `${padRight(recPace + '/mile', 12)} | ` +
+               `${padRight('AvgHR ' + recHrAvg, 16)}`;
+      });
+
+      let avgWorkPace = 'N/A';
+      let avgWorkHr = 'N/A';
+      let fastestRepSummary = 'N/A';
+      let slowestRepSummary = 'N/A';
+      let repPaceVariabilityPct = 'N/A';
+      let consistencyLabel = 'N/A';
+      let note = 'Work reps are inferred purely from lap position using your stated workout structure.';
+
+      if (workOnlyLaps.length > 0) {
+        const validWorkLaps = workOnlyLaps.filter(lap => isNum(lap.totalTimeS) && isNum(lap.distanceM) && lap.distanceM > 0);
+        if (validWorkLaps.length > 0) {
+          const totalWorkTimeS = validWorkLaps.reduce((a, lap) => a + lap.totalTimeS, 0);
+          const totalWorkDistanceM = validWorkLaps.reduce((a, lap) => a + lap.distanceM, 0);
+          avgWorkPace = `${formatPaceFromTimeDistance(totalWorkTimeS, totalWorkDistanceM, 'mile')}/mile`;
+
+          const hrVals = validWorkLaps.map(lap => lap.avgHr).filter(isNum);
+          if (hrVals.length) {
+            avgWorkHr = `${mean(hrVals).toFixed(1)} bpm`;
+          }
+
+          const pacedLaps = validWorkLaps.map(lap => ({
+            lap,
+            paceSecPerMile: lap.totalTimeS / (lap.distanceM / 1609.344)
+          }));
+          pacedLaps.sort((a, b) => a.paceSecPerMile - b.paceSecPerMile);
+          const fastest = pacedLaps[0];
+          const slowest = pacedLaps[pacedLaps.length - 1];
+          fastestRepSummary = `Lap ${fastest.lap.index} | ${formatDuration(fastest.lap.totalTimeS)} | ${formatDuration(fastest.paceSecPerMile)}/mile`;
+          slowestRepSummary = `Lap ${slowest.lap.index} | ${formatDuration(slowest.lap.totalTimeS)} | ${formatDuration(slowest.paceSecPerMile)}/mile`;
+
+          if (pacedLaps.length >= 2) {
+            const paceVals = pacedLaps.map(x => x.paceSecPerMile);
+            const meanPace = mean(paceVals);
+            const variance = paceVals.reduce((a, v) => a + Math.pow(v - meanPace, 2), 0) / paceVals.length;
+            const stdDev = Math.sqrt(variance);
+            const cvPct = meanPace > 0 ? (stdDev / meanPace) * 100 : null;
+            if (isNum(cvPct)) {
+              repPaceVariabilityPct = `${cvPct.toFixed(1)}%`;
+              if (cvPct < 2.5) consistencyLabel = 'Tight';
+              else if (cvPct < 5.0) consistencyLabel = 'Acceptable';
+              else consistencyLabel = 'Poor';
+            }
+          }
+
+          note = validWorkLaps.length === 1
+            ? 'Only one work rep was detected. Structured analysis assumes lap 3 is work, lap 4 is recovery, and they alternate from there.'
+            : 'Structured analysis assumes lap 3 is work, lap 4 is recovery, and work/recovery alternate until the pre-cooldown rest lap.';
+        }
+      }
+
+      return {
+        hasData: true,
+        intentLabel: intentLabelFromValue(sessionIntent),
+        warmup: summarizeLapForStructured(warmup),
+        prep: summarizeLapForStructured(prep),
+        preCooldownRest: summarizeLapForStructured(preCooldownRest),
+        cooldown: summarizeLapForStructured(cooldown),
+        finalWalk: summarizeLapForStructured(finalWalk),
+        workRepCount: workOnlyLaps.length,
+        actualWorkRepCount: workOnlyLaps.length,
+        recoveryRepCount: recoveryLaps.length,
+        avgWorkPace,
+        avgWorkHr,
+        fastestRepSummary,
+        slowestRepSummary,
+        repPaceVariabilityPct,
+        consistencyLabel,
+        note,
+        workRepSummaries
+      };
+    }
+
+    function computeEfficiencyAtFixedHr(points, lthr) {
+      if (points.length < 2 || !isNum(lthr) || lthr <= 0) {
+        return { hasData: false };
+      }
+
+      const lowerHr = Math.round(lthr * 0.80);
+      const upperHr = Math.round(lthr * 0.89) - 1;
+      const targetHr = Math.round((lowerHr + upperHr) / 2);
+      let timeS = 0;
+      let distanceM = 0;
+      let hrWeighted = 0;
+      let hrTime = 0;
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dt = (b.timeMs - a.timeMs) / 1000;
+        if (dt <= 0 || !isNum(a.hrBpm)) continue;
+
+        let speed = isNum(a.speedMps) ? a.speedMps : null;
+        if (speed == null && isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM) {
+          speed = (b.distanceM - a.distanceM) / dt;
+        }
+        if (!isNum(speed) || speed < RUN_WALK_THRESHOLD_MPS) continue;
+
+        const elapsedMin = (a.timeMs - points[0].timeMs) / 60000;
+        if (elapsedMin < STEADY_RUN_START_MIN) continue;
+
+        if (a.hrBpm < lowerHr || a.hrBpm > upperHr) continue;
+
+        const segDistanceM = isNum(a.distanceM) && isNum(b.distanceM) && b.distanceM >= a.distanceM
+          ? (b.distanceM - a.distanceM)
+          : speed * dt;
+
+        timeS += dt;
+        distanceM += segDistanceM;
+        hrWeighted += a.hrBpm * dt;
+        hrTime += dt;
+      }
+
+      if (!isNum(timeS) || timeS <= 0 || !isNum(distanceM) || distanceM <= 0) {
+        return { hasData: false };
+      }
+
+      const avgHr = hrTime > 0 ? hrWeighted / hrTime : null;
+      const pacePerMile = formatPaceFromTimeDistance(timeS, distanceM, 'mile');
+
+      let note = 'Useful benchmark for comparing aerobic efficiency across steady runs.';
+      if (timeS < 300) {
+        note = 'Benchmark is directionally useful, but the time accumulated in the HR band was limited.';
+      } else if (timeS >= 600) {
+        note = 'Strong aerobic efficiency benchmark with enough time in band to compare over time.';
+      }
+
+      return {
+        hasData: true,
+        targetHr,
+        lowerHr,
+        upperHr,
+        timeS,
+        distanceM,
+        avgHr,
+        pacePerMile,
+        note
+      };
+    }
+
+  </script>
+</body>
+</html>
