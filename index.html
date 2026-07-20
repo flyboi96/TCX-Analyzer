@@ -213,7 +213,7 @@
           </div>
           <div class="control-card">
             <label for="lthr">LTHR</label>
-            <input id="lthr" type="number" min="100" max="240" step="1" value="177" />
+            <input id="lthr" type="number" min="100" max="240" step="1" value="179" />
           </div>
         </div>
         <div class="control-card full-span">
@@ -352,7 +352,7 @@
       return isNum(secPerKm) ? secPerKm * 1.609344 : null;
     }
 
-    function buildReport(xmlText, fileName, sessionIntent = 'auto', lactateThresholdHr = 177) {
+    function buildReport(xmlText, fileName, sessionIntent = 'auto', lactateThresholdHr = 179) {
       const parser = new DOMParser();
       const xml = parser.parseFromString(xmlText, 'application/xml');
       const parserError = xml.querySelector('parsererror');
