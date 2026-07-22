@@ -17,7 +17,7 @@
       --good: #7bd88f;
     }
 
-@@
+
 
     * {
       box-sizing: border-box;
@@ -379,7 +379,6 @@
       const avgHr = weightedAverageHr(points);
       const maxHrVal = Math.max(...points.map(p => p.hrBpm).filter(isNum));
       const altitude = altitudeStats(points);
-      const zones = heartRateZones(points, lactateThresholdHr);
       const kmSplits = makeDistanceSplits(points, 1000.0);
       const mileSplits = makeDistanceSplits(points, 1609.344);
       const samples = sampleTimeSeries(points, 60);
@@ -390,6 +389,8 @@
       const steadyPoints = (sessionIntent === 'steady' && laps.length > 0)
         ? points.filter(p => p.timeMs >= laps[0].startTime?.getTime() && p.timeMs <= (laps[0].startTime?.getTime() + (isNum(laps[0].totalTimeS) ? laps[0].totalTimeS * 1000 : 0)))
         : points;
+      const zonePoints = sessionIntent === 'steady' ? steadyPoints : points;
+      const zones = heartRateZones(zonePoints, lactateThresholdHr);
 
       const steadyRunAnalysis = sessionIntent === 'steady' ? computeSteadyRunAnalysis(steadyPoints, computeTotalDistance(steadyPoints, [])) : { hasSteadyData: false };
       const earlyRunAggression = sessionIntent === 'steady' ? computeEarlyRunAggression(steadyPoints, computeTotalTime(steadyPoints, []), computeTotalDistance(steadyPoints, []), lactateThresholdHr) : { hasData: false };
@@ -512,6 +513,9 @@
 
       lines.push('HEART RATE ZONES');
       lines.push('------------------------------------------------------------');
+      if (sessionIntent === 'steady') {
+        lines.push('Scope: Steady-run mode only. Heart rate zones use lap 1 only.');
+      }
       lines.push(`LTHR used: ${lactateThresholdHr} bpm`);
       lines.push(`Z1: < ${Math.round(lactateThresholdHr * 0.80)} bpm`);
       lines.push(`Z2: ${Math.round(lactateThresholdHr * 0.80)}-${Math.round(lactateThresholdHr * 0.89) - 1} bpm`);
